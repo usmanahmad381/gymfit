@@ -4,14 +4,9 @@ import { useEffect, useRef, useState } from "react";
 
 type Message = { role: "user" | "assistant"; content: string };
 
-const GREETING: Message = {
-  role: "assistant",
-  content: "Hi! I'm the GymFit assistant. Ask me about classes, pricing, hours, or memberships. 💪",
-};
-
 export default function ChatWidget() {
   const [open, setOpen] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([GREETING]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -40,8 +35,7 @@ export default function ChatWidget() {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        // Send only the real conversation (skip the local greeting).
-        body: JSON.stringify({ messages: next.filter((m) => m !== GREETING) }),
+        body: JSON.stringify({ messages: next }),
       });
       const data = await res.json();
       const reply = res.ok
@@ -81,6 +75,11 @@ export default function ChatWidget() {
         </div>
 
         <div ref={scrollRef} className="flex h-96 flex-col gap-3 overflow-y-auto px-4 py-4">
+          {messages.length === 0 && !loading && (
+            <div className="m-auto max-w-[16rem] text-center text-sm text-neutral-500">
+              👋 Ask me anything about GymFit — classes, pricing, hours, or memberships.
+            </div>
+          )}
           {messages.map((m, i) => (
             <div
               key={i}
