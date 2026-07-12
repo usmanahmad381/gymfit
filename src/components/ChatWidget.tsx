@@ -55,7 +55,7 @@ export default function ChatWidget() {
   return (
     <div className="fixed bottom-6 right-6 z-[60] flex flex-col items-end gap-4">
       <div
-        className={`flex w-[min(24rem,calc(100vw-3rem))] flex-col overflow-hidden rounded-2xl border border-white/10 bg-ink-soft shadow-2xl transition-all duration-200 ${
+        className={`flex max-h-[calc(100dvh-6rem)] w-[min(24rem,calc(100vw-3rem))] flex-col overflow-hidden rounded-2xl border border-white/10 bg-ink-soft shadow-2xl transition-all duration-200 ${
           open ? "pointer-events-auto scale-100 opacity-100" : "pointer-events-none scale-95 opacity-0"
         }`}
         aria-hidden={!open}
@@ -74,7 +74,10 @@ export default function ChatWidget() {
           </button>
         </div>
 
-        <div ref={scrollRef} className="flex h-96 flex-col gap-3 overflow-y-auto px-4 py-4">
+        <div
+          ref={scrollRef}
+          className="flex h-[min(24rem,calc(100dvh-14rem))] flex-col gap-3 overflow-y-auto px-4 py-4"
+        >
           {messages.length === 0 && !loading && (
             <div className="m-auto max-w-[16rem] text-center text-sm text-neutral-500">
               👋 Ask me anything about GymFit — classes, pricing, hours, or memberships.
