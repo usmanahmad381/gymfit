@@ -1,0 +1,23 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand: #f43f1d;
+  --color-brand-dark: #c62d10;
+  --color-ink: #0a0a0a;
+  --color-ink-soft: #171717;
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--color-ink);
+  color: #ededed;
+  -webkit-font-smoothing: antialiased;
+}
