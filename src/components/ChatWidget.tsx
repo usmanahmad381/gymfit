@@ -1,34 +1,25 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { ChatKit, useChatKit } from "@openai/chatkit-react";
+import { useEffect, useRef, useState } from "react";
 
-// Self-hosted ChatKit server (agent-server/server.py). For the custom-server
-// path the widget talks straight to your backend — no getClientSecret.
-const CHATKIT_URL =
-  process.env.NEXT_PUBLIC_CHATKIT_URL ?? "http://localhost:8000/chatkit";
-// domainKey allowlists the page's origin for ChatKit's CDN script. "local-dev"
-// works on localhost; register your production domain in the OpenAI dashboard
-// and put its key here.
-const CHATKIT_DOMAIN_KEY =
-  process.env.NEXT_PUBLIC_CHATKIT_DOMAIN_KEY ?? "local-dev";
+type Message = { role: "user" | "assistant"; content: string };
+
+const GREETING: Message = {
+  role: "assistant",
+  content: "Hi! I'm the GymFit assistant. Ask me about classes, pricing, hours, or memberships. 💪",
+};
 
 export default function ChatWidget() {
   const [open, setOpen] = useState(false);
+  const [messages, setMessages] = useState<Message[]>([GREETING]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
-  const { control } = useChatKit({
-    api: {
-      url: CHATKIT_URL,
-      domainKey: CHATKIT_DOMAIN_KEY,
-    },
-    theme: {
-      colorScheme: "dark",
-      color: { accent: { primary: "#f43f1d", level: 2 } },
-      radius: "round",
-    },
-  });
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+  }, [messages, loading]);
 
-  // Close the panel with the Escape key.
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
@@ -36,21 +27,48 @@ export default function ChatWidget() {
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
+  async function send() {
+    const text = input.trim();
+    if (!text || loading) return;
+
+    const next = [...messages, { role: "user" as const, content: text }];
+    setMessages(next);
+    setInput("");
+    setLoading(true);
+
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        // Send only the real conversation (skip the local greeting).
+        body: JSON.stringify({ messages: next.filter((m) => m !== GREETING) }),
+      });
+      const data = await res.json();
+      const reply = res.ok
+        ? data.reply
+        : data.error ?? "Something went wrong. Please try again.";
+      setMessages((m) => [...m, { role: "assistant", content: reply }]);
+    } catch {
+      setMessages((m) => [
+        ...m,
+        { role: "assistant", content: "I couldn't reach the server. Please try again." },
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <div className="fixed bottom-6 right-6 z-[60] flex flex-col items-end gap-4">
       <div
-        className={`w-[min(24rem,calc(100vw-3rem))] origin-bottom-right overflow-hidden rounded-2xl border border-white/10 bg-ink-soft shadow-2xl transition-all duration-200 ${
-          open
-            ? "pointer-events-auto scale-100 opacity-100"
-            : "pointer-events-none scale-95 opacity-0"
+        className={`flex w-[min(24rem,calc(100vw-3rem))] flex-col overflow-hidden rounded-2xl border border-white/10 bg-ink-soft shadow-2xl transition-all duration-200 ${
+          open ? "pointer-events-auto scale-100 opacity-100" : "pointer-events-none scale-95 opacity-0"
         }`}
         aria-hidden={!open}
       >
         <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
           <div className="flex items-center gap-2 font-semibold">
-            <span className="grid h-6 w-6 place-items-center rounded-md bg-brand text-xs text-white">
-              G
-            </span>
+            <span className="grid h-6 w-6 place-items-center rounded-md bg-brand text-xs text-white">G</span>
             GymFit Assistant
           </div>
           <button
@@ -61,7 +79,50 @@ export default function ChatWidget() {
             ✕
           </button>
         </div>
-        <ChatKit control={control} className="h-[32rem] w-full" />
+
+        <div ref={scrollRef} className="flex h-96 flex-col gap-3 overflow-y-auto px-4 py-4">
+          {messages.map((m, i) => (
+            <div
+              key={i}
+              className={`max-w-[85%] rounded-2xl px-3.5 py-2 text-sm leading-relaxed ${
+                m.role === "user"
+                  ? "self-end bg-brand text-white"
+                  : "self-start bg-white/10 text-neutral-100"
+              }`}
+            >
+              {m.content}
+            </div>
+          ))}
+          {loading && (
+            <div className="self-start rounded-2xl bg-white/10 px-3.5 py-2 text-sm text-neutral-400">
+              <span className="inline-flex gap-1">
+                <span className="animate-bounce">●</span>
+                <span className="animate-bounce [animation-delay:0.15s]">●</span>
+                <span className="animate-bounce [animation-delay:0.3s]">●</span>
+              </span>
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2 border-t border-white/10 p-3">
+          <input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && send()}
+            placeholder="Ask about GymFit…"
+            className="min-w-0 flex-1 rounded-full bg-white/5 px-4 py-2 text-sm text-white placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-brand/50"
+          />
+          <button
+            onClick={send}
+            disabled={loading || !input.trim()}
+            aria-label="Send"
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand text-white transition-colors hover:bg-brand-dark disabled:opacity-40"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m22 2-7 20-4-9-9-4Z" /><path d="M22 2 11 13" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       <button
