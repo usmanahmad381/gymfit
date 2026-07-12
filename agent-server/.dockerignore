@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+_test_agent.py
+run.ps1
+README.md
